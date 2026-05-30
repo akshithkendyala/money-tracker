@@ -53,15 +53,66 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderApp();
 });
 
-// Load state from API server or fallback to localStorage
+// Check and retrieve Cloud Sync credentials
+function getCloudCredentials() {
+  const apiKey = localStorage.getItem('jsonbin_api_key');
+  const binId = localStorage.getItem('jsonbin_bin_id');
+  if (apiKey && binId) {
+    return { apiKey, binId };
+  }
+  return null;
+}
+
+// Load state from API server, Cloud Database, or fallback to localStorage
 async function loadState() {
+  const creds = getCloudCredentials();
+  
+  // 1. If Cloud Sync is active, load from JSONBin
+  if (creds) {
+    try {
+      const res = await fetch(`https://api.jsonbin.io/v3/b/${creds.binId}`, {
+        headers: {
+          'X-Master-Key': creds.apiKey,
+          'X-Bin-Meta': 'false'
+        }
+      });
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          throw new Error('Invalid API Key.');
+        } else if (res.status === 404) {
+          throw new Error('Bin ID not found.');
+        } else {
+          throw new Error('Cloud HTTP error code ' + res.status);
+        }
+      }
+      state = await res.json();
+      console.log('Loaded financial state from JSONBin cloud successfully.');
+      return;
+    } catch (err) {
+      console.error('Could not connect to JSONBin cloud. Falling back to local storage:', err.message);
+      const localData = localStorage.getItem('finance_pro_state');
+      if (localData) {
+        try {
+          state = JSON.parse(localData);
+          return;
+        } catch (e) {
+          state = { ...demoData };
+        }
+      } else {
+        state = { ...demoData };
+      }
+      return;
+    }
+  }
+
+  // 2. Local mode: Load from local Node server /api/state
   try {
     const res = await fetch('/api/state');
     if (!res.ok) throw new Error('Backend HTTP error code ' + res.status);
     state = await res.json();
-    console.log('Loaded financial state from server successfully.');
+    console.log('Loaded financial state from local server successfully.');
   } catch (err) {
-    console.warn('Could not connect to backend server. Falling back to local storage:', err.message);
+    console.warn('Could not connect to local server. Falling back to local storage:', err.message);
     const localData = localStorage.getItem('finance_pro_state');
     if (localData) {
       try {
@@ -76,11 +127,35 @@ async function loadState() {
   }
 }
 
-// Save state to API server and localStorage as redundancy
+// Save state to Cloud Database, local backend, and localStorage
 async function saveState() {
-  // Sync to localStorage first
+  // Always sync to localStorage first as a secure offline backup
   localStorage.setItem('finance_pro_state', JSON.stringify(state));
 
+  const creds = getCloudCredentials();
+
+  // 1. If Cloud Sync is active, save to JSONBin
+  if (creds) {
+    try {
+      const res = await fetch(`https://api.jsonbin.io/v3/b/${creds.binId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Master-Key': creds.apiKey
+        },
+        body: JSON.stringify(state)
+      });
+      if (!res.ok) {
+        throw new Error('JSONBin cloud returned error code ' + res.status);
+      }
+      console.log('Successfully saved financial state to JSONBin cloud.');
+    } catch (err) {
+      console.error('Failed to persist state changes on JSONBin cloud:', err.message);
+    }
+    return;
+  }
+
+  // 2. Local mode: Save to local Node server /api/state
   try {
     const res = await fetch('/api/state', {
       method: 'POST',
@@ -93,7 +168,7 @@ async function saveState() {
       throw new Error('Server returned error code ' + res.status);
     }
   } catch (err) {
-    console.error('Failed to persist state changes on backend server:', err.message);
+    console.error('Failed to persist state changes on local server:', err.message);
   }
 }
 
@@ -128,6 +203,12 @@ function initEventHandlers() {
 
   // Bind Export PDF button
   document.getElementById('print-summary-btn').addEventListener('click', generatePDF);
+
+  // Bind Cloud Sync buttons & form
+  document.getElementById('btn-cloud-settings').addEventListener('click', openCloudSettingsModal);
+  document.getElementById('btn-cloud-settings-sidebar').addEventListener('click', openCloudSettingsModal);
+  document.getElementById('cloud-settings-form').addEventListener('submit', handleCloudSettingsSubmit);
+  document.getElementById('btn-cloud-disconnect').addEventListener('click', handleCloudDisconnect);
 
   // Modal toggles
   document.getElementById('add-transaction-btn').addEventListener('click', () => openTransactionModal());
@@ -593,6 +674,90 @@ function closeModal(modalId) {
     document.getElementById('modal-goal-title').textContent = 'Create Savings Goal';
   }
 }
+
+// Cloud Settings Modal controls
+window.openCloudSettingsModal = function() {
+  const apiKey = localStorage.getItem('jsonbin_api_key') || '';
+  const binId = localStorage.getItem('jsonbin_bin_id') || '';
+  
+  document.getElementById('jsonbin-key').value = apiKey;
+  document.getElementById('jsonbin-id').value = binId;
+  document.getElementById('cloud-settings-error').style.display = 'none';
+  
+  const disconnectBtn = document.getElementById('btn-cloud-disconnect');
+  if (apiKey && binId) {
+    disconnectBtn.style.display = 'block';
+  } else {
+    disconnectBtn.style.display = 'none';
+  }
+  
+  openModal('cloud-settings-modal');
+};
+
+window.handleCloudSettingsSubmit = async function(e) {
+  e.preventDefault();
+  const apiKeyInput = document.getElementById('jsonbin-key').value.trim();
+  const binIdInput = document.getElementById('jsonbin-id').value.trim();
+  const errorMsg = document.getElementById('cloud-settings-error');
+  const saveBtn = e.target.querySelector('button[type="submit"]');
+  const originalBtnText = saveBtn.textContent;
+  
+  errorMsg.style.display = 'none';
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Verifying & Syncing...';
+  
+  try {
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${binIdInput}`, {
+      headers: {
+        'X-Master-Key': apiKeyInput,
+        'X-Bin-Meta': 'false'
+      }
+    });
+    
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        throw new Error('Invalid API Key. Please verify your JSONBin Master Key.');
+      } else if (res.status === 404) {
+        throw new Error('Bin ID not found. Please verify your JSONBin Bin ID.');
+      } else {
+        throw new Error(`Connection failed. HTTP Code: ${res.status}`);
+      }
+    }
+    
+    // Key is verified! Save credentials to localStorage
+    localStorage.setItem('jsonbin_api_key', apiKeyInput);
+    localStorage.setItem('jsonbin_bin_id', binIdInput);
+    
+    // Parse fetched state and sync
+    state = await res.json();
+    
+    // Re-render the application with cloud data
+    renderApp();
+    
+    // Close modal
+    closeModal('cloud-settings-modal');
+    
+    alert('Cloud database successfully connected and synchronized!');
+  } catch (err) {
+    errorMsg.textContent = err.message;
+    errorMsg.style.display = 'block';
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = originalBtnText;
+  }
+};
+
+window.handleCloudDisconnect = function() {
+  if (confirm('Are you sure you want to disconnect cloud sync? Your local data won\'t be deleted, but it will no longer synchronize across devices.')) {
+    localStorage.removeItem('jsonbin_api_key');
+    localStorage.removeItem('jsonbin_bin_id');
+    closeModal('cloud-settings-modal');
+    alert('Cloud database disconnected.');
+    
+    // Reload state from local server or localStorage
+    loadState().then(() => renderApp());
+  }
+};
 
 // Transaction Modal Control
 window.openTransactionModal = function(id = null) {

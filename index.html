@@ -57,10 +57,14 @@
       </li>
     </ul>
 
-    <!-- Export PDF action -->
-    <div style="margin-top: auto; padding-top: 20px; width: 100%;">
+    <!-- Export PDF and Cloud Settings actions -->
+    <div style="margin-top: auto; padding-top: 20px; width: 100%; display: flex; flex-direction: column; gap: 10px;">
+      <button class="btn btn-secondary" id="btn-cloud-settings-sidebar" style="width: 100%; justify-content: center; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); gap: 8px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Cloud Sync Settings
+      </button>
       <button class="btn btn-danger" id="print-summary-btn" style="width: 100%; justify-content: center;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; margin-right: 8px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
         Export Month PDF
       </button>
     </div>
@@ -441,6 +445,39 @@
   </div>
 
   <!-- ============================================== -->
+  <!-- CLOUD SYNC SETTINGS MODAL -->
+  <!-- ============================================== -->
+  <div class="modal-overlay" id="cloud-settings-modal">
+    <div class="modal-content glass-card" style="max-width: 450px;">
+      <div class="modal-header">
+        <h2>☁️ Cloud Sync Settings (JSONBin)</h2>
+        <button class="btn-close-modal" type="button">&times;</button>
+      </div>
+      <form id="cloud-settings-form">
+        <p style="font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 15px; line-height: 1.4;">
+          Synchronize your personal finance data between your laptop and mobile phone 24/7. Your credentials will be saved securely inside your browser's local storage and are never uploaded to GitHub.
+        </p>
+        <div class="form-group">
+          <label for="jsonbin-key">JSONBin API Key (Master Key)</label>
+          <input type="password" id="jsonbin-key" placeholder="Starts with $2b$10$..." required>
+        </div>
+        <div class="form-group">
+          <label for="jsonbin-id">JSONBin Bin ID</label>
+          <input type="text" id="jsonbin-id" placeholder="e.g., 65a32b..." required>
+        </div>
+        <p style="font-size: 12px; color: #ff5e5e; margin-bottom: 15px; line-height: 1.4; display: none;" id="cloud-settings-error"></p>
+        <div class="modal-footer" style="justify-content: space-between;">
+          <button class="btn btn-danger" type="button" id="btn-cloud-disconnect" style="background: rgba(255,94,94,0.1); color: #ff5e5e; border: 1px solid rgba(255,94,94,0.2); display: none;">Disconnect</button>
+          <div style="display: flex; gap: 10px; margin-left: auto;">
+            <button class="btn btn-secondary btn-close-modal" type="button">Cancel</button>
+            <button class="btn btn-primary" type="submit">Save & Sync</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
   <!-- LOGIN OVERLAY -->
   <!-- ============================================== -->
   <div class="login-overlay" id="login-overlay">
@@ -482,6 +519,12 @@
       </div>
       
       <p id="login-error" class="login-error-msg"></p>
+      
+      <button type="button" class="btn btn-secondary" id="btn-cloud-settings" style="margin-top: 10px; margin-bottom: 5px; width: 100%; justify-content: center; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); gap: 8px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Cloud Sync Settings
+      </button>
+
       <div class="pin-hint">Keyboard support active (0-9, Backspace, C)</div>
     </div>
   </div>
