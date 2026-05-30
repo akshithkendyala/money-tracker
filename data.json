@@ -1,0 +1,31 @@
+{
+  "accounts": [
+    {
+      "id": "acc-1",
+      "name": "SBI main account",
+      "type": "Salary",
+      "balance": 952.3
+    },
+    {
+      "id": "acc-2",
+      "name": "Telangana Grameena Bank",
+      "type": "Savings",
+      "balance": 1000
+    },
+    {
+      "id": "acc-3",
+      "name": "Cash Wallet",
+      "type": "Cash",
+      "balance": 450
+    },
+    {
+      "id": "acc-1780132084245",
+      "name": "Amma fixed deposit",
+      "type": "Savings",
+      "balance": 3000
+    }
+  ],
+  "transactions": [],
+  "budgets": [],
+  "goals": []
+}

@@ -1,0 +1,13 @@
+{
+  "name": "money-tracker",
+  "version": "1.0.0",
+  "description": "FinancePro Personal Finance Dashboard with Backend Storage",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  },
+  "type": "commonjs"
+}
