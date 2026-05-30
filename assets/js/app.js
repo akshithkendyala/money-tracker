@@ -44,6 +44,28 @@ let currentSelectedYear = parseInt(todayIST.split('-')[0]);
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', async () => {
+  // Parse credentials from URL query parameters or hash (Magic Login Link)
+  const urlParams = new URLSearchParams(window.location.search);
+  let urlKey = urlParams.get('key');
+  let urlBin = urlParams.get('bin');
+
+  if (!urlKey || !urlBin) {
+    const hash = window.location.hash.substring(1);
+    const hashParams = new URLSearchParams(hash);
+    urlKey = hashParams.get('key');
+    urlBin = hashParams.get('bin');
+  }
+
+  if (urlKey && urlBin) {
+    localStorage.setItem('jsonbin_api_key', urlKey);
+    localStorage.setItem('jsonbin_bin_id', urlBin);
+    
+    // Clean up the browser URL bar to keep it clean
+    const cleanUrl = window.location.origin + window.location.pathname;
+    window.history.replaceState({}, document.title, cleanUrl);
+    console.log('Successfully saved cloud credentials from Magic Link.');
+  }
+
   // Check Authentication Status
   if (sessionStorage.getItem('finance_pro_authenticated') === 'true') {
     document.getElementById('login-overlay').style.display = 'none';
@@ -209,6 +231,19 @@ function initEventHandlers() {
   document.getElementById('btn-cloud-settings-sidebar').addEventListener('click', openCloudSettingsModal);
   document.getElementById('cloud-settings-form').addEventListener('submit', handleCloudSettingsSubmit);
   document.getElementById('btn-cloud-disconnect').addEventListener('click', handleCloudDisconnect);
+  document.getElementById('btn-copy-magic').addEventListener('click', () => {
+    const copyText = document.getElementById('magic-link-url');
+    copyText.select();
+    copyText.setSelectionRange(0, 99999); // For mobile devices
+    navigator.clipboard.writeText(copyText.value);
+    
+    const copyBtn = document.getElementById('btn-copy-magic');
+    const originalText = copyBtn.textContent;
+    copyBtn.textContent = 'Copied!';
+    setTimeout(() => {
+      copyBtn.textContent = originalText;
+    }, 2000);
+  });
 
   // Modal toggles
   document.getElementById('add-transaction-btn').addEventListener('click', () => openTransactionModal());
@@ -685,10 +720,19 @@ window.openCloudSettingsModal = function() {
   document.getElementById('cloud-settings-error').style.display = 'none';
   
   const disconnectBtn = document.getElementById('btn-cloud-disconnect');
+  const magicContainer = document.getElementById('magic-link-container');
+  
   if (apiKey && binId) {
     disconnectBtn.style.display = 'block';
+    
+    // Generate magic login link
+    const baseUrl = window.location.origin + window.location.pathname;
+    const magicUrl = `${baseUrl}#key=${apiKey}&bin=${binId}`;
+    document.getElementById('magic-link-url').value = magicUrl;
+    magicContainer.style.display = 'block';
   } else {
     disconnectBtn.style.display = 'none';
+    magicContainer.style.display = 'none';
   }
   
   openModal('cloud-settings-modal');
